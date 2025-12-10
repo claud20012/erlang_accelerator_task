@@ -9,6 +9,7 @@
         cowboy,
         hackney,
         poolboy,
+        eunit,
         epgsql
     ]},
     {env, []},
