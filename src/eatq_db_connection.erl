@@ -76,18 +76,18 @@ handle_call({query, Sql, Params}, _From, State = #state{conn_pid = ConnPid}) ->
     % Use epgsql:prepared_query for synchronous execution
     Result = epgsql:prepared_query(ConnPid, Sql, Params),
     
-    io:format("~p: Param query. Result: ~n", [Result]),
+    % io:format("~p: Param query. Result: ~n", [Result]),
     % The result of squery is propagated back to the caller
     {reply, Result, State};
 
 handle_call({query, Sql}, _From, State = #state{conn_pid = ConnPid}) ->
     
-    io:format("~p: Simple query: ~n~n", [Sql]),
+    % io:format("~p: Simple query: ~n~n", [Sql]),
 
     % Simple query version (no parameters)
     Result = epgsql:squery(ConnPid, Sql),
 
-    io:format("~p: Simple query. Result: ~n", [Result]),
+    % io:format("~p: Simple query. Result: ~n", [Result]),
     {reply, Result, State};
 
 handle_call(_Req, _From, State) ->
