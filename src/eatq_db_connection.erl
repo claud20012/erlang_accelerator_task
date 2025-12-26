@@ -70,7 +70,7 @@ init([]) ->
 handle_continue(_Req, State) ->
     {noreply, State}.
 
-%% @private
+%% private
 %% handle_call: Synchronous request for database query.
 handle_call({query, Sql, Params}, _From, State = #state{conn_pid = ConnPid}) ->
     % Use epgsql:prepared_query for synchronous execution
