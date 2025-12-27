@@ -20,7 +20,7 @@ init([]) ->
     %% Suggested child list and order: DB connection -> Worker Pool -> Scheduler
     %% For now, don't worry if cowboy starts before other components.
     eatq_db_connection:start_link(),
-    Dispatch = eatq_http_handler:add_test_endpoint(),
+    Dispatch = eatq_http_handler:start_routes(),
     {ok, _Pid} = cowboy:start_clear(http_listener,
                         [{port, 8080}],
                         #{env => #{dispatch => Dispatch}}),

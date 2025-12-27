@@ -5,7 +5,7 @@
 
 -export([
     init/2,
-    add_test_endpoint/0
+    start_routes/0
 ]).
 
 init(Req, State) ->
@@ -15,9 +15,10 @@ init(Req, State) ->
     Req),
     {ok, Req, State}.
 
-add_test_endpoint() ->
+start_routes() ->
     cowboy_router:compile([
         {'_', [
-            {"/test", eatq_http_handler, []}
+            {"/test", eatq_http_handler, []},
+            {"/matrix/:id", matrix_handler, []}
         ]}
     ]).
