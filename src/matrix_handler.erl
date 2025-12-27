@@ -41,7 +41,12 @@ get_matrix_data(Req0, State) ->
         Other -> list_to_binary(io_lib:format("~p", [Other]))
     end,
 
-    Response = <<"Returning data for matrix entity: ", Id/binary>>,
+    io:format("~p: Getting matrix data for ID: ~n~n", [Id]),
+
+    MatrixData = eatq_db:get_matrix_data(Id),
+    FormattedBody = io_lib:format("~p", [MatrixData]),
+    %% provide MatrixData as response 
+    Response = list_to_binary(FormattedBody),
     {Response, Req0, State}.
 
 %% POST implementation
