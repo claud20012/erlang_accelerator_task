@@ -37,7 +37,7 @@ get_matrix_data(Req0, State) ->
     RawId = cowboy_req:binding(id, Req0),
     Id = case RawId of
         undefined -> <<>>;
-        B when is_binary(B) -> B;
+        B when is_binary(B) -> binary_to_integer(B);
         Other -> list_to_binary(io_lib:format("~p", [Other]))
     end,
 

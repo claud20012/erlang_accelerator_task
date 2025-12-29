@@ -73,11 +73,12 @@ handle_continue(_Req, State) ->
 %% private
 %% handle_call: Synchronous request for database query.
 handle_call({query, Sql, Params}, _From, State = #state{conn_pid = ConnPid}) ->
-    % Use epgsql:prepared_query for synchronous execution
-    Result = epgsql:prepared_query(ConnPid, Sql, Params),
+    
+    % Use epgsql:query for synchronous execution with parameters
+    Result = epgsql:equery(ConnPid, Sql, Params),
     
     % io:format("~p: Param query. Result: ~n", [Result]),
-    % The result of squery is propagated back to the caller
+    % The result of query is propagated back to the caller
     {reply, Result, State};
 
 handle_call({query, Sql}, _From, State = #state{conn_pid = ConnPid}) ->

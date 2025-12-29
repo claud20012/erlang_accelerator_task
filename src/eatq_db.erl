@@ -15,8 +15,7 @@ save_task(_Task) ->
 
 get_matrix_data(Id) ->
     %% initiate a query to fetch matrix data by Id and send it to eatq_db_connection 
-    %% SQL = "SELECT matrix_id, row_index, col_index, value FROM matrix_cell WHERE matrix_id = $1",
-    SQL = "SELECT matrix_id, row_index, col_index, value FROM matrix_cell",
+    SQL = "SELECT matrix_id, row_index, col_index, value FROM matrix_cell WHERE matrix_id = $1",
     Params = [Id],
 
-    eatq_db_connection:query(SQL).
+    eatq_db_connection:query(SQL, Params).
