@@ -44,10 +44,26 @@ get_matrix_data(Req0, State) ->
     io:format("~p: Getting matrix data for ID: ~n~n", [Id]),
 
     MatrixData = eatq_db:get_matrix_data(Id),
-    FormattedBody = io_lib:format("~p", [MatrixData]),
-    %% provide MatrixData as response 
-    Response = list_to_binary(FormattedBody),
-    {Response, Req0, State}.
+
+    case MatrixData of
+            {ok, _Columns, Rows} ->
+            %% Transform tuples into Maps
+            MatrixMap = lists:map(fun({MatrixId, Row, Col, Val}) ->
+                #{
+                    <<"matrix_id">> => MatrixId,
+                    <<"row_index">> => Row,
+                    <<"col_index">> => Col,
+                    <<"value">>     => Val
+                }
+            end, Rows),
+
+            %% Encode the list of maps
+            Body = jsx:encode(MatrixMap),
+            {Body, Req0, State};
+
+        {error, _Reason} ->
+            {stop, Req0, State}
+    end.
 
 %% POST implementation
 post_matrix_data(Req0, State) ->
