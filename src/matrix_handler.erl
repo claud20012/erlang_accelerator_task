@@ -57,8 +57,10 @@ get_matrix_data(Req0, State) ->
                 }
             end, Rows),
 
+            Envelope = #{ <<"matrix_data">> => MatrixMap },
+
             %% Encode the list of maps
-            Body = jsx:encode(MatrixMap),
+            Body = jsx:encode(Envelope),
             {Body, Req0, State};
 
         {error, _Reason} ->
