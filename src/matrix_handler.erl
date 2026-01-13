@@ -119,12 +119,21 @@ post_matrix_data(Req0, State) ->
                                         Acc ++ RowTuples
                                     end, [], Pairs),
 
-                            %% At this point you can persist Flat into the DB using eatq_db_connection or a helper in eatq_db.
+                            %% Persist Flat into the DB using helper in eatq_db.
                             io:format("matrix_handler: received matrix ~p with ~p cells~n", [MatrixId, length(Flat)]),
                             io:format("cells: ~p~n", [Flat]),
 
-                            %% Respond success. Returning 'true' tells cowboy_rest the POST succeeded.
-                            {true, Req1, State};
+                            case eatq_db:save_matrix(MatrixId, Flat) of
+                                {ok, Count} ->
+                                    io:format("matrix_handler: saved ~p cells~n", [Count]),
+                                    %% Respond success. Returning 'true' tells cowboy_rest the POST succeeded.
+                                    {true, Req1, State};
+
+                                {error, Reason} ->
+                                    io:format("matrix_handler: db error: ~p~n", [Reason]),
+                                    Req2 = cowboy_req:reply(500, #{<<"content-type">> => <<"text/plain">>}, <<"db error">>, Req1),
+                                    {stop, Req2, State}
+                            end;
 
                         false ->
                             Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"invalid data rows">>, Req1),
