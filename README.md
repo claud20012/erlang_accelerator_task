@@ -64,7 +64,7 @@ Get status of a task.
 Put a new task to app's queue.
 Note: Start with the http type, but feel free to explore other options like shell.
 
-    curl -X POST http://localhost:8095/matrix/:id \
+    curl -X POST http://localhost:8095/matrix \
         -H "Content-Type: application/json" \
         -d '{
                 "matrix_id": 2,
