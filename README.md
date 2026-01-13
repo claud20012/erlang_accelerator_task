@@ -59,24 +59,21 @@ Get all tasks.
 
 Get status of a task.
 
-    GET /tasks/:id
+   curl GET http://localhost:8095/matrix/:id
 
 Put a new task to app's queue.
 Note: Start with the http type, but feel free to explore other options like shell.
 
-    POST /tasks
-    {
-        "task": {
-            "type": "http",
-            "payload": {
-                "url": "...",
-                "method": "...",
-                "body": "...",
-                "headers": {}
-            },
-            "trigger_at": "<DateTime in RFC3339>"
-        }
-    }
+    curl -X POST http://localhost:8095/matrix/:id \
+        -H "Content-Type: application/json" \
+        -d '{
+                "matrix_id": 2,
+                "data": [
+                    [10, 20, 30],
+                    [10, 20, 30],
+                    [40, 50, 60]
+                ]
+            }'
 
     {
         "task": {

@@ -70,8 +70,69 @@ get_matrix_data(Req0, State) ->
 %% POST implementation
 post_matrix_data(Req0, State) ->
     %% Read the body (up to 8MB by default)
-    {ok, _Body, Req1} = cowboy_req:read_body(Req0),
-    
-    %% In a real app, you'd process the Body here.
-    %% Returning 'true' tells Cowboy the resource was created/updated successfully (204 No Content or 200 OK)
-    {true, Req1, State}.
+    %% read the following
+    {ok, Body, Req1} = cowboy_req:read_body(Req0),
+
+    %% Try to decode JSON body into maps (jsx option return_maps makes objects into maps)
+    %% Decode JSON safely
+    Decoded =
+        try jsx:decode(Body, [return_maps]) of
+            Json -> {ok, Json}
+        catch
+            _:_ -> {error, invalid_json}
+        end,
+
+    case Decoded of
+        {error, invalid_json} ->
+            %% Invalid JSON -> respond 400
+            Req2 = cowboy_req:reply(400,
+                    #{<<"content-type">> => <<"text/plain">>},
+                    <<"invalid json">>,
+                Req1),
+            {stop, Req2, State};
+
+        {ok, JsonMap} when is_map(JsonMap) ->
+            %% Expected shape:
+            %% {"matrix_id": <int>, "data": [[..],[..],..]}
+            MatrixId = maps:get(<<"matrix_id">>, JsonMap, undefined),
+            Data = maps:get(<<"data">>, JsonMap, undefined),
+
+            case {MatrixId, Data} of
+                {undefined, _} ->
+                    Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"missing matrix_id">>, Req1),
+                    {stop, Req2, State};
+
+                {_, undefined} ->
+                    Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"missing data">>, Req1),
+                    {stop, Req2, State};
+
+                {_Id, Rows} when is_list(Rows) ->
+                    %% Basic validation of rows: ensure each row is a list of numbers
+                    Valid = lists:all(fun(R) -> is_list(R) andalso lists:all(fun(E) -> is_integer(E) orelse is_float(E) end, R) end, Rows),
+                    case Valid of
+                        true ->
+                            %% Transform into a flat list of {MatrixId, RowIndex, ColIndex, Value} tuples
+                            Pairs = lists:zip(Rows, lists:seq(0, length(Rows) - 1)),
+                            Flat = lists:foldl(fun({Row, RIdx}, Acc) ->
+                                        ColPairs = lists:zip(Row, lists:seq(0, length(Row) - 1)),
+                                        RowTuples = [ {MatrixId, RIdx, CIdx, Val} || {Val, CIdx} <- ColPairs ],
+                                        Acc ++ RowTuples
+                                    end, [], Pairs),
+
+                            %% At this point you can persist Flat into the DB using eatq_db_connection or a helper in eatq_db.
+                            io:format("matrix_handler: received matrix ~p with ~p cells~n", [MatrixId, length(Flat)]),
+                            io:format("cells: ~p~n", [Flat]),
+
+                            %% Respond success. Returning 'true' tells cowboy_rest the POST succeeded.
+                            {true, Req1, State};
+
+                        false ->
+                            Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"invalid data rows">>, Req1),
+                            {stop, Req2, State}
+                    end
+            end;
+
+        _Other ->
+            Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"invalid body">>, Req1),
+            {stop, Req2, State}
+    end.

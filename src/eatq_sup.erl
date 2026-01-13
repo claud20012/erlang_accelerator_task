@@ -22,7 +22,7 @@ init([]) ->
     eatq_db_connection:start_link(),
     Dispatch = eatq_http_handler:start_routes(),
     {ok, _Pid} = cowboy:start_clear(http_listener,
-                        [{port, 8080}],
+                        [{port, 8095}],
                         #{env => #{dispatch => Dispatch}}),
     % ...existing code...
     SupFlags = #{
