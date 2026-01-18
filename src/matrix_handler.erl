@@ -35,7 +35,7 @@ content_types_accepted(Req, State) ->
 %% GET implementation
 get_matrix_data(Req0, State) ->
     %% If a diagonal-length binding exists, delegate to the calculate handler
-    case cowboy_req:binding(<<"diagonal-length">>, Req0) of
+    case cowboy_req:binding('diagonal-length', Req0) of
         undefined -> ok;
         _ ->
             %% Delegate to specific calculator
@@ -87,7 +87,7 @@ get_greatest_product(Req0, State) ->
         OtherId -> list_to_binary(io_lib:format("~p", [OtherId]))
     end,
 
-    RawLength = cowboy_req:binding(<<"diagonal-length">>, Req0),
+    RawLength = cowboy_req:binding('diagonal-length', Req0),
     DiagonalLength = case RawLength of
         undefined -> <<>>;
         C when is_binary(C) -> (catch binary_to_integer(C));
@@ -112,6 +112,8 @@ get_greatest_product(Req0, State) ->
 
 %% Recursive helper to calculate the product of diagonal elements
 calculate_diagonal_length(MatrixData, Depth, Row, Column) ->
+    io:format("Product for (~p, ~p): Depth ~p~n", [Row, Column, Depth]),
+
     Val = case lists:keyfind(Row, Column, MatrixData) of
         {Row, Column, V} -> V;
         false -> undefined
