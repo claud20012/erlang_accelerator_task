@@ -59,7 +59,9 @@ Get all tasks.
 
 Get status of a task.
 
-   curl GET http://localhost:8095/matrix/:id
+   curl GET http://localhost:8095/matrix/:matrix_id
+
+   curl GET http://localhost:8095/matrix/calculate/:matrix_id/:diagonal_length
 
 Put a new task to app's queue.
 Note: Start with the http type, but feel free to explore other options like shell.

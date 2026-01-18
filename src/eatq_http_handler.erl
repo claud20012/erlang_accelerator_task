@@ -20,6 +20,7 @@ start_routes() ->
         {'_', [
             {"/test", eatq_http_handler, []},
             {"/matrix/:id", matrix_handler, []},
+            {"/matrix/calculate/:id/:diagonal-length", matrix_handler, []},
             {"/matrix", matrix_handler, []}
         ]}
     ]).

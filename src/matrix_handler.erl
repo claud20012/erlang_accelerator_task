@@ -6,7 +6,8 @@
 
 -export([
     get_matrix_data/2,
-    post_matrix_data/2
+    post_matrix_data/2,
+    get_greatest_product/2
 ]).
 
 init(Req, State) ->
@@ -33,6 +34,14 @@ content_types_accepted(Req, State) ->
 
 %% GET implementation
 get_matrix_data(Req0, State) ->
+    %% If a diagonal-length binding exists, delegate to the calculate handler
+        case cowboy_req:binding('diagonal-length', Req0) of
+        undefined -> ok;
+        _ ->
+            %% Delegate to specific calculator
+            get_greatest_product(Req0, State)
+    end,
+
     %% Extract the :id from the URL
     RawId = cowboy_req:binding(id, Req0),
     Id = case RawId of
@@ -65,6 +74,96 @@ get_matrix_data(Req0, State) ->
 
         {error, _Reason} ->
             {stop, Req0, State}
+    end.
+
+
+%% Calculate the greatest product of N adjacent numbers in any direction
+get_greatest_product(Req0, State) ->
+    %% extract id and diagonal-length
+    RawId = cowboy_req:binding(id, Req0),
+    Id = case RawId of
+        undefined -> <<>>;
+        B when is_binary(B) -> (catch binary_to_integer(B));
+        OtherId -> list_to_binary(io_lib:format("~p", [OtherId]))
+    end,
+
+    %% parse diagonal-length (must be integer)
+    DiagonalLength =
+        case cowboy_req:binding('diagonal-length', Req0) of
+            undefined ->
+                Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"missing diagonal-length">>, Req0),
+                {stop, Req2, State};
+            Bin when is_binary(Bin) ->
+                case (catch binary_to_integer(Bin)) of
+                    {'EXIT', _} ->
+                        Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"invalid diagonal-length">>, Req0),
+                        {stop, Req2, State};
+                    Int when is_integer(Int), Int > 0 -> Int;
+                    _ ->
+                        Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"invalid diagonal-length">>, Req0),
+                        {stop, Req2, State}
+                end;
+            _ ->
+                Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"invalid diagonal-length">>, Req0),
+                {stop, Req2, State}
+        end,
+
+    %% If we returned early with {stop,...} propagate it
+    case DiagonalLength of
+        {stop, _} = Stop -> Stop;
+        N when is_integer(N) ->
+            %% fetch matrix rows
+            case eatq_db:get_matrix_data(Id) of
+                {ok, _Cols, Rows} when is_list(Rows), Rows =/= [] ->
+                    %% Build a lookup map {R,C} => Value
+                    CellMap = maps:from_list([ {{R,C}, V} || {_, R, C, V} <- Rows ]),
+                    Rs = [ R || {_, R, _, _} <- Rows ],
+                    Cs = [ C || {_, _, C, _} <- Rows ],
+                    MaxR = lists:max(Rs),
+                    MaxC = lists:max(Cs),
+
+                    Dirs = [{0,1}, {1,0}, {1,1}, {1,-1}],
+
+                    %% scan all starting positions within observed bounds
+                    ScanStarts = [{R,C} || R <- lists:seq(0, MaxR), C <- lists:seq(0, MaxC)],
+
+                    Best = lists:foldl(fun({R,C}, Acc) ->
+                                lists:foldl(fun({DR,DC}, Acc2) ->
+                                    PosList = [ {R + K*DR, C + K*DC} || K <- lists:seq(0, N-1) ],
+                                    Values = [ maps:get(P, CellMap, undefined) || P <- PosList ],
+                                    case lists:any(fun(X) -> X =:= undefined end, Values) of
+                                        true -> Acc2;
+                                        false ->
+                                            Prod = lists:foldl(fun(X,A) -> X * A end, 1, Values),
+                                            case Acc2 of
+                                                {none} -> {prod, Prod, {R,C}, {DR,DC}, Values};
+                                                {prod, BestP, _SPos, _SDir, _SVals} when Prod > BestP -> {prod, Prod, {R,C}, {DR,DC}, Values};
+                                                _ -> Acc2
+                                            end
+                                    end
+                                end, Acc, Dirs)
+                            end, {none}, ScanStarts),
+
+                    Result = case Best of
+                        {prod, P, {SR,SC}, {DR,DC}, Vals} ->
+                            #{ <<"matrix_id">> => Id, <<"length">> => N, <<"greatest_product">> => P,
+                               <<"start">> => #{<<"row">> => SR, <<"col">> => SC}, <<"direction">> => [DR, DC], <<"values">> => Vals };
+                        _ -> #{ <<"matrix_id">> => Id, <<"length">> => N, <<"greatest_product">> => null }
+                    end,
+
+                    Body = jsx:encode(Result),
+                    {Body, Req0, State};
+
+                {ok, _Cols, []} ->
+                    _Req2 = cowboy_req:reply(404, #{<<"content-type">> => <<"text/plain">>}, <<"matrix not found">>, Req0),
+                    {stop, _Req2, State};
+
+                {error, _} ->
+                    {stop, Req0, State}
+            end;
+        _ ->
+            _Req2 = cowboy_req:reply(400, #{<<"content-type">> => <<"text/plain">>}, <<"invalid diagonal-length">>, Req0),
+            {stop, _Req2, State}
     end.
 
 %% POST implementation
