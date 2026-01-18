@@ -96,20 +96,19 @@ get_greatest_product(Req0, State) ->
 
     %% fetch matrix rows
     MatrixData = eatq_db:get_matrix_data(Id),
-    lists:foreach(fun({Row, Column}) ->
-        Product = calculate_diagonal_length(MatrixData, DiagonalLength, Row, Column),
-        io:format("Diagonal product starting at (~p,~p): ~p~n", [Row, Column, Product])
-    end,
-    [{R, C} || {_, R, C, _} <- MatrixData]),
+  case MatrixData of
+            {ok, _Columns, _Rows} ->
+        %% Find the maximum product
+        MaxProduct = lists:max([calculate_diagonal_length(MatrixData, DiagonalLength, R, C) || {R, C} <- MatrixData]),
 
-    %% Find the maximum product
-    MaxProduct = lists:max([calculate_diagonal_length(MatrixData, DiagonalLength, R, C) || {R, C} <- MatrixData]),
+        Envelope = #{ <<"max_product">> => MaxProduct },
 
-    Envelope = #{ <<"max_product">> => MaxProduct },
-
-    %% Encode the list of maps
-    Body = jsx:encode(Envelope),
-    {Body, Req0, State}.
+        %% Encode the list of maps
+        Body = jsx:encode(Envelope),
+        {Body, Req0, State};
+    {error, _Reason} ->
+            {stop, Req0, State}
+    end.
 
 %% Recursive helper to calculate the product of diagonal elements
 calculate_diagonal_length(MatrixData, Depth, Row, Column) ->
