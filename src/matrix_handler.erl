@@ -94,41 +94,53 @@ get_greatest_product(Req0, State) ->
         OtherDiagonalLength -> list_to_binary(io_lib:format("~p", [OtherDiagonalLength]))
     end,
 
-    %% fetch matrix rows
-    MatrixData = eatq_db:get_matrix_data(Id),
-  case MatrixData of
-            {ok, _Columns, _Rows} ->
-        %% Find the maximum product
-        MaxProduct = lists:max([calculate_diagonal_length(MatrixData, DiagonalLength, R, C) || {R, C} <- MatrixData]),
+    %% fetch matrix rows (eatq_db returns {ok, Columns, Rows})
+    case eatq_db:get_matrix_data(Id) of
+        {ok, _Columns, Rows} when is_list(Rows) ->
+            %% Rows are tuples: {MatrixId, RowIndex, ColIndex, Value}
+            %% Build a lookup map {Row,Col} => numeric value
+            CellList = [ {{R,C}, (catch binary_to_float(V))} || {_, R, C, V} <- Rows ],
+            CellMap = maps:from_list(CellList),
 
-        Envelope = #{ <<"max_product">> => MaxProduct },
+            %% Compute products starting from each cell present in CellMap
+            Starts = maps:keys(CellMap),
+            Products = [ calculate_diagonal_length(CellMap, DiagonalLength, R, C) || {R, C} <- Starts ],
 
-        %% Encode the list of maps
-        Body = jsx:encode(Envelope),
-        {Body, Req0, State};
-    {error, _Reason} ->
+            MaxProduct = case Products of
+                [] -> null; % no cells
+                Ps -> lists:max(Ps)
+            end,
+
+            Envelope = #{ <<"max_product">> => MaxProduct },
+            Body = jsx:encode(Envelope),
+            {Body, Req0, State};
+
+        {error, _Reason} ->
             {stop, Req0, State}
     end.
 
 %% Recursive helper to calculate the product of diagonal elements
-calculate_diagonal_length(MatrixData, Depth, Row, Column) ->
-    io:format("Product for (~p, ~p): Depth ~p~n", [Row, Column, Depth]),
-
-    Val = case lists:keyfind(Row, Column, MatrixData) of
-        {Row, Column, V} -> V;
-        false -> undefined
+calculate_diagonal_length(CellMap, Depth, Row, Column) when is_map(CellMap) ->
+    %% Depth may be non-integer; try to coerce
+    D = case Depth of
+        I when is_integer(I) -> I;
+        B when is_binary(B) -> (catch binary_to_integer(B));
+        _ -> undefined
     end,
+    io:format("Product for (~p, ~p): Depth ~p~n", [Row, Column, D]),
 
-    case Depth of
-        1 -> Val;
-        D when D > 1 ->
-            NextRow = Row + 1,
-            NextCol = Column + 1,
-            NextValue = calculate_diagonal_length(MatrixData, Depth - 1, NextRow, NextCol),
-            case {Val, NextValue} of
-                {undefined, _} -> undefined;
-                {_, undefined} -> undefined;
-                {V1, V2} -> V1 * V2
+    case D of
+        undefined -> undefined;
+        1 -> maps:get({Row, Column}, CellMap, undefined);
+        N when is_integer(N), N > 1 ->
+            case maps:get({Row, Column}, CellMap, undefined) of
+                undefined -> undefined;
+                V ->
+                    Next = calculate_diagonal_length(CellMap, N - 1, Row + 1, Column + 1),
+                    case Next of
+                        undefined -> undefined;
+                        NV -> V * NV
+                    end
             end
     end.
 
