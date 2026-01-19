@@ -106,13 +106,17 @@ get_greatest_product(Req0, State) ->
             Starts = maps:keys(CellMap),
             Products = [ calculate_diagonal_length(CellMap, DiagonalLength, R, C) || {R, C} <- Starts ],
 
-            MaxProduct = case Products of
-                [] -> null; % no cells
+            ValidProducts = [P || P <- Products, P /= undefined],
+            MaxProduct = case ValidProducts of
+                [] -> 0.0; % no cells
                 Ps -> lists:max(Ps)
             end,
 
-            Envelope = #{ <<"max_product">> => MaxProduct },
-            Body = jsx:encode(Envelope),
+            io:format("Products ~p ~n", [Products]),
+            io:format("MaxProduct ~p ~n", [MaxProduct]),
+
+            EnvelopeMax = #{ <<"max_product">> => MaxProduct },
+            Body = jsx:encode(EnvelopeMax),
             {Body, Req0, State};
 
         {error, _Reason} ->
@@ -138,7 +142,7 @@ calculate_diagonal_length(CellMap, Depth, Row, Column) when is_map(CellMap) ->
                 V ->
                     Next = calculate_diagonal_length(CellMap, N - 1, Row + 1, Column + 1),
                     case Next of
-                        undefined -> undefined;
+                        undefined -> 1.0;
                         NV -> V * NV
                     end
             end
