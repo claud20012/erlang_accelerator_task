@@ -80,7 +80,14 @@ rebar3 compile
 ``` bash 
 rebar3 shell
 ```
-
+## Run tests
+``` bash 
+rebar3 eunit
+``` 
+``` shell
+eunit:test(matrix_handler_test, [{test, {name, "calculate_diagonal_product_test"}}, verbose])
+eunit:test(matrix_handler_test, [verbose])
+```
 
 # HTTP API
 

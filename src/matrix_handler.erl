@@ -7,7 +7,8 @@
 -export([
     get_matrix_data/2,
     post_matrix_data/2,
-    get_greatest_product/2
+    get_greatest_product/2,
+    calculate_diagonal_product/4
 ]).
 
 init(Req, State) ->
@@ -104,7 +105,7 @@ get_greatest_product(Req0, State) ->
 
             %% Compute products starting from each cell present in CellMap
             Starts = maps:keys(CellMap),
-            Products = [ calculate_diagonal_length(CellMap, DiagonalLength, R, C) || {R, C} <- Starts ],
+            Products = [ calculate_diagonal_product(CellMap, DiagonalLength, R, C) || {R, C} <- Starts ],
 
             ValidProducts = [P || P <- Products, P /= undefined],
             MaxProduct = case ValidProducts of
@@ -124,7 +125,8 @@ get_greatest_product(Req0, State) ->
     end.
 
 %% Recursive helper to calculate the product of diagonal elements
-calculate_diagonal_length(CellMap, Depth, Row, Column) when is_map(CellMap) ->
+calculate_diagonal_product(CellMap, Depth, Row, Column) when is_map(CellMap) ->
+    io:format("CellMap for ~p ~n", [CellMap]),
     %% Depth may be non-integer; try to coerce
     D = case Depth of
         I when is_integer(I) -> I;
@@ -140,7 +142,7 @@ calculate_diagonal_length(CellMap, Depth, Row, Column) when is_map(CellMap) ->
             case maps:get({Row, Column}, CellMap, undefined) of
                 undefined -> undefined;
                 V ->
-                    Next = calculate_diagonal_length(CellMap, N - 1, Row + 1, Column + 1),
+                    Next = calculate_diagonal_product(CellMap, N - 1, Row + 1, Column + 1),
                     case Next of
                         undefined -> 1.0;
                         NV -> V * NV
