@@ -19,8 +19,8 @@ start_routes() ->
     cowboy_router:compile([
         {'_', [
             {"/test", eatq_http_handler, []},
+            {"/matrix/product/:id/:diagonal-length", matrix_handler, []},
             {"/matrix/:id", matrix_handler, []},
-            {"/matrix/:id/:diagonal-length", matrix_handler, []},
             {"/matrix", matrix_handler, []}
         ]}
     ]).

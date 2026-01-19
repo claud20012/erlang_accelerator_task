@@ -1,5 +1,4 @@
-Erlang Accelerator Task Queue
-=====
+# Erlang Accelerator Task Queue
 
 The purpose of this application is to demonstrate the tools we commonly use when writing Erlang code.
 
@@ -7,7 +6,9 @@ The purpose of this application is to demonstrate the tools we commonly use when
                -> [scheduler] -> [worker] -> [task] -> [http]
                                                     -> [shell]
 
-In the 20 ×20 grid below, four numbers along a diagonal line have been marked in red.
+## Requirements: 
+
+In the 20 × 20 grid below, four numbers along a diagonal line have been marked in red.
 
 08 02 22 97 38 15 00 40 00 75 04 05 07 78 52 12 50 77 91 08
 49 49 99 40 17 81 18 57 60 87 17 40 98 43 69 48 04 56 62 00
@@ -32,40 +33,64 @@ In the 20 ×20 grid below, four numbers along a diagonal line have been marked i
 
 The product of these numbers is 26 ×63 ×78 ×14 =1788696.
 
-What is the greatest product of four adjacent numbers in the same direction (up, down, left, right, or diagonally) in the 20 ×20 grid?
+What is the greatest product of four adjacent numbers diagonal direction in the 20 ×20 grid?
 
 https://projecteuler.net/problem=11
 
 
-Prerequisites
+# Prerequisites
+
+## Start services
+``` bash
+install postgresql
+brew install postgresql
+
+start postgres
+brew services start postgresql@14
+```
+
+## Create table
+``` SQL 
+Create table
 -----
-# install postgresql
-$ brew install postgresql
+CREATE TABLE matrix_cell (
+    -- Links to the matrix this cell belongs to
+    matrix_id SERIAL NOT NULL,
+    -- Row index (1-based)
+    row_index INTEGER NOT NULL,
+    -- Column index (1-based)
+    col_index INTEGER NOT NULL,
+    -- The numerical value stored in the cell
+    value NUMERIC(10, 4) NOT NULL,
+    
+    -- Constraint: Ensures that a single matrix cannot have two values 
+    -- at the same (row, column) position.
+    CONSTRAINT pk_matrix_cell PRIMARY KEY (matrix_id, row_index, col_index)
+);
 
-# start postgres
-$ brew services start postgresql@14
+CREATE INDEX idx_matrix_cell_coords ON matrix_cell (row_index, col_index);
+``` 
 
-Build
------
+## Build
+``` bash 
+rebar3 compile
+```
 
-    $ rebar3 compile
+## Run
+``` bash 
+rebar3 shell
+```
 
-HTTP API
------
 
-Get all tasks.
+# HTTP API
 
-    GET /tasks
+## Print matrix data 
+``` bash
+curl GET http://localhost:8095/matrix/:matrix_id
+``` 
 
-Get status of a task.
-
-   curl GET http://localhost:8095/matrix/:matrix_id
-
-   curl GET http://localhost:8095/matrix/calculate/:matrix_id/:diagonal_length
-
-Put a new task to app's queue.
-Note: Start with the http type, but feel free to explore other options like shell.
-
+## Insert a new matrix 
+``` bash
     curl -X POST http://localhost:8095/matrix \
         -H "Content-Type: application/json" \
         -d '{
@@ -76,6 +101,18 @@ Note: Start with the http type, but feel free to explore other options like shel
                     [40, 50, 60]
                 ]
             }'
+
+```
+
+## Calculate greatest diagonal product 
+``` bash
+curl GET http://localhost:8095/matrix/product/:matrix_id/:diagonal_length
+```
+
+
+# TODOS 
+Put a new task to app's queue.
+Note: Start with the http type, but feel free to explore other options like shell.
 
     {
         "task": {

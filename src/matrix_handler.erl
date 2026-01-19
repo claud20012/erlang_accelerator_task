@@ -36,12 +36,13 @@ content_types_accepted(Req, State) ->
 get_matrix_data(Req0, State) ->
     %% If a diagonal-length binding exists, delegate to the calculate handler
     case cowboy_req:binding('diagonal-length', Req0) of
-        undefined -> ok;
+        undefined -> get_matrix_info(Req0, State);
         _ ->
             %% Delegate to specific calculator
             get_greatest_product(Req0, State)
-    end,
+    end.
 
+get_matrix_info(Req0, State) ->
     %% Extract the :id from the URL
     RawId = cowboy_req:binding(id, Req0),
     Id = case RawId of
@@ -75,7 +76,6 @@ get_matrix_data(Req0, State) ->
         {error, _Reason} ->
             {stop, Req0, State}
     end.
-
 
 %% Calculate the greatest product of N adjacent numbers in any direction
 get_greatest_product(Req0, State) ->
